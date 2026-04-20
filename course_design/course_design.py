@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-设计系统 — 提示词工程实战课
-字体：Noto Sans CJK SC（苹方同级无衬线字体）
-渲染：WeasyPrint (HTML → PDF)
+设计系统 — 课程生成器（通用版）
+字体：PingFang SC 优先，Noto Sans CJK SC / Microsoft YaHei 兜底
+渲染：WeasyPrint (HTML → PDF) / 可选 HTML / DOCX / Markdown
+
+关键设计决策：
+1. 字体优先级：PingFang SC > Noto Sans CJK SC > Microsoft YaHei
+   在 macOS 用户本地打开时自动使用苹方（更美观），
+   在服务器/Linux 渲染 PDF 时落到 Noto Sans CJK SC（兼容）。
+2. Emoji 规范化：所有 emoji 需用 <span class="emoji"> 包裹
+   用 normalize_emoji() 自动完成。避免 emoji 撑破行高、串字号。
+3. 多格式输出：write_pdf / write_html / write_docx / write_markdown
+   或用 write_course(..., formats=['pdf', 'html']) 统一分发。
 """
+
+import os
+import re
+import subprocess
 
 # ═══════════════════════════════════════════════════════════
 #  全局设计 Token
@@ -56,15 +69,49 @@ BASE_CSS = """
     }
 }
 
-/* ── 字体设置 ── */
+/* ── 字体设置（PingFang 优先） ── */
 body {
-    font-family: 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    /* 字体优先级说明：
+       1) PingFang SC/TC/HK — Apple 系统首选，本地查看 PDF/HTML 最美观
+       2) Noto Sans CJK SC — Linux/服务器端 WeasyPrint 渲染兜底
+       3) Microsoft YaHei / Source Han Sans — Windows/开源环境兜底
+       4) 最后是 emoji 字体族，保证 emoji 不落到豆腐框 */
+    font-family: 'PingFang SC', 'PingFang TC', 'PingFang HK',
+                 'Noto Sans CJK SC', 'Source Han Sans SC',
+                 'Microsoft YaHei', 'Hiragino Sans GB',
+                 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+                 sans-serif;
     font-size: 10.5pt;
     line-height: 1.85;
     color: %(text)s;
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+}
+
+/* ── Emoji 样式规范化（关键） ──
+   所有 emoji 必须用 <span class="emoji"> 包裹，
+   或用 normalize_emoji() 自动包裹。
+   解决以下排版问题：
+   a) emoji 原生字号比汉字大 → 锁定 1em（0.92em 视觉居中）
+   b) emoji 字形带上下边距 → line-height: 1 + vertical-align 居中
+   c) emoji 行高撑破段落 → inline-block 限制影响范围
+   d) emoji 被斜体/加粗继承 → font-style/font-weight normal */
+.emoji {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji',
+                 'Noto Color Emoji', 'Twemoji Mozilla',
+                 'Noto Emoji', sans-serif;
+    font-size: 0.95em;
+    font-style: normal;
+    font-weight: 400;
+    font-variant: normal;
+    line-height: 1;
+    vertical-align: -0.08em;
+    display: inline-block;
+    text-decoration: none;
+    white-space: nowrap;
+    /* 防止 emoji 触发断行 */
+    word-break: keep-all;
 }
 
 /* ── 页眉 ── */
@@ -378,7 +425,8 @@ ol li::before {
     font-size: 10pt;
     line-height: 1.85;
     color: %(primary)s;
-    font-family: 'Noto Sans CJK SC', 'PingFang SC', sans-serif;
+    font-family: 'PingFang SC', 'Noto Sans CJK SC',
+                 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
     white-space: pre-wrap;
     word-break: break-all;
 }
@@ -592,7 +640,8 @@ hr.accent-divider {
 strong { font-weight: 700; color: %(gray_800)s; }
 em { font-style: normal; font-weight: 500; color: %(accent)s; }
 code {
-    font-family: 'Noto Sans Mono CJK SC', monospace;
+    font-family: 'SF Mono', 'PingFang SC', 'Noto Sans Mono CJK SC',
+                 'Source Han Sans HW', Menlo, Consolas, monospace;
     font-size: 9.5pt;
     background: %(code_bg)s;
     color: %(code_text)s;
@@ -602,8 +651,120 @@ code {
 """ % COLORS
 
 
-def make_html(chapter_title: str, body_html: str) -> str:
-    """Wrap body content in full HTML document."""
+# ═══════════════════════════════════════════════════════════
+#  Emoji 规范化工具（关键模块）
+# ═══════════════════════════════════════════════════════════
+# 问题背景：
+#   emoji 在 PDF/HTML 渲染中会因为字号、基线、字体族不同，
+#   导致 a) 撑破行高；b) 行内错位；c) 和加粗/斜体叠加出错；
+#   d) 部分环境显示成 □（豆腐块）。
+# 解决方案：
+#   所有 emoji 必须用 <span class="emoji">…</span> 包裹，
+#   由 CSS 强制锁定 font-family、font-size、line-height、
+#   vertical-align。只要统一走这个包装，排版就稳定。
+
+# ─── Unicode emoji 范围（覆盖 99% 常用场景） ──────────────
+_EMOJI_PATTERN = re.compile(
+    r"(?:"
+    r"[\U0001F300-\U0001F5FF]"    # Misc Symbols & Pictographs
+    r"|[\U0001F600-\U0001F64F]"   # Emoticons 😀
+    r"|[\U0001F680-\U0001F6FF]"   # Transport & Map 🚀
+    r"|[\U0001F700-\U0001F77F]"   # Alchemical
+    r"|[\U0001F780-\U0001F7FF]"   # Geometric Shapes Ext
+    r"|[\U0001F800-\U0001F8FF]"   # Supplemental Arrows-C
+    r"|[\U0001F900-\U0001F9FF]"   # Supplemental Symbols 🧠
+    r"|[\U0001FA00-\U0001FAFF]"   # Symbols Ext-A 🪐
+    r"|[\U0001F1E6-\U0001F1FF]"   # Regional Indicators 🇨🇳
+    r"|[\u2600-\u26FF]"           # Misc Symbols ☀ ✅ ⚠ ⚡
+    r"|[\u2700-\u27BF]"           # Dingbats ✏ ✂ ✔ ✖
+    r"|[\u2300-\u23FF]"           # Misc Technical ⏱ ⏰ ⌚
+    r"|[\u2B00-\u2BFF]"           # Misc Symbols & Arrows
+    r"|[\u3030\u303D\u3297\u3299]"  # 部分 CJK emoji
+    r")"
+    r"(?:\uFE0F)?"                # 变体选择符
+    r"(?:"                        # 可选 ZWJ 序列（组合 emoji）
+    r"\u200D"
+    r"(?:[\U0001F300-\U0001F9FF]|[\u2600-\u27BF])"
+    r"(?:\uFE0F)?"
+    r")*"
+)
+
+
+def emoji(char: str) -> str:
+    """把单个 emoji 包进规范化 span，用于组件内精确控制位置。"""
+    return f'<span class="emoji">{char}</span>'
+
+
+def normalize_emoji(html: str) -> str:
+    """自动把 HTML 字符串中所有裸 emoji 包装进 <span class="emoji">。
+
+    特性：
+    - 自动跳过已包裹的 emoji，避免重复嵌套
+    - 自动跳过 HTML 标签属性里的 emoji（如 title="⭐"）
+    - 支持 ZWJ 组合 emoji（如 👨‍💻、🏳️‍🌈）
+
+    推荐用法：
+        body_html = assemble_body(...)
+        body_html = normalize_emoji(body_html)
+        HTML(string=make_html(ch, body_html)).write_pdf(path)
+    或直接让 make_html(auto_normalize_emoji=True) 自动处理（默认开启）。
+    """
+    if not html:
+        return html
+
+    # 先把已经 wrap 过的部分占位，避免二次嵌套
+    _marker_map = {}
+
+    def _out(m):
+        key = f'\x00EMOJI_SPAN_{len(_marker_map)}\x00'
+        _marker_map[key] = m.group(0)
+        return key
+
+    wrapped_re = re.compile(
+        r'<span\s+class="emoji"[^>]*>.*?</span>', re.DOTALL
+    )
+    working = wrapped_re.sub(_out, html)
+
+    # 交替遍历 HTML 标签 / 文本节点，只在文本节点里包 emoji
+    def _wrap_seg(match):
+        seg = match.group(0)
+        if seg.startswith('<'):
+            return seg  # HTML 标签，不碰
+        return _EMOJI_PATTERN.sub(
+            lambda em: f'<span class="emoji">{em.group(0)}</span>',
+            seg
+        )
+
+    result = re.sub(r'<[^>]+>|[^<]+', _wrap_seg, working)
+
+    # 还原占位符
+    for key, orig in _marker_map.items():
+        result = result.replace(key, orig)
+    return result
+
+
+def strip_emoji(text: str) -> str:
+    """删除字符串中所有 emoji（emoji-free 模式，用于打印机/OCR）。"""
+    return _EMOJI_PATTERN.sub('', text)
+
+
+# ═══════════════════════════════════════════════════════════
+#  HTML 装配
+# ═══════════════════════════════════════════════════════════
+def make_html(chapter_title: str,
+              body_html: str,
+              brand: str = '课程材料',
+              auto_normalize_emoji: bool = True) -> str:
+    """Wrap body content in full HTML document.
+
+    参数：
+      chapter_title:          页眉显示的章节名
+      body_html:              正文 HTML
+      brand:                  页眉左侧品牌名（默认为"课程材料"）
+      auto_normalize_emoji:   是否自动包装 emoji（默认开启，建议保持）
+    """
+    if auto_normalize_emoji:
+        body_html = normalize_emoji(body_html)
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -614,7 +775,7 @@ def make_html(chapter_title: str, body_html: str) -> str:
 </head>
 <body>
 <div id="page-header">
-  <span class="brand">提示词工程实战课</span>
+  <span class="brand">{brand}</span>
   <span class="chapter">{chapter_title}</span>
 </div>
 <div id="page-footer">第 </div>
@@ -640,11 +801,11 @@ def lesson_cover(num_cn: str, title: str, desc: str, duration: str, topics: list
   <div class="lesson-meta">
     <div class="lesson-meta-item">
       <span class="label">学习时长</span>
-      <span class="value">⏱ {duration}</span>
+      <span class="value"><span class="emoji">⏱</span> {duration}</span>
     </div>
     <div class="lesson-meta-item">
       <span class="label">本课主题数</span>
-      <span class="value">📚 {len(topics)} 个主题</span>
+      <span class="value"><span class="emoji">📚</span> {len(topics)} 个主题</span>
     </div>
   </div>
 </div>"""
@@ -668,7 +829,8 @@ def ol(items: list) -> str:
     return f'<ol>{li}</ol>\n'
 
 def card(kind: str, title: str, body: str, icon: str = '') -> str:
-    icon_html = f'<span>{icon}</span>' if icon else ''
+    # icon 走 class="emoji" 通道，保证行高一致、不撑破标题
+    icon_html = f'<span class="emoji">{icon}</span>' if icon else ''
     return f"""
 <div class="card card-{kind} no-break">
   <div class="card-title">{icon_html}{title}</div>
@@ -677,8 +839,8 @@ def card(kind: str, title: str, body: str, icon: str = '') -> str:
 
 def card_key(title: str, body: str)      -> str: return card('key',      title, body, '📌')
 def card_tip(title: str, body: str)      -> str: return card('tip',      title, body, '💡')
-def card_good(label: str, body: str)     -> str: return card('good',     f'✅ {label}', body)
-def card_bad(label: str, body: str)      -> str: return card('bad',      f'❌ {label}', body)
+def card_good(label: str, body: str)     -> str: return card('good',     label, body, '✅')
+def card_bad(label: str, body: str)      -> str: return card('bad',      label, body, '❌')
 def card_exercise(num, question: str)    -> str: return card('exercise', f'练习题 {num}', question, '✏️')
 def card_answer(num, answer: str)        -> str: return card('answer',   f'练习题 {num} — 参考答案', answer, '✅')
 def card_advanced(title: str, body: str) -> str: return card('advanced', title, body, '⚡')
@@ -690,8 +852,8 @@ def compare(bad_title: str, bad_body: str, good_title: str, good_body: str) -> s
 <table class="compare-table no-break">
   <thead>
     <tr>
-      <th class="bad-col">❌ {bad_title}</th>
-      <th class="good-col">✅ {good_title}</th>
+      <th class="bad-col"><span class="emoji">❌</span> {bad_title}</th>
+      <th class="good-col"><span class="emoji">✅</span> {good_title}</th>
     </tr>
   </thead>
   <tbody>
@@ -702,11 +864,11 @@ def compare(bad_title: str, bad_body: str, good_title: str, good_body: str) -> s
   </tbody>
 </table>"""
 
-def prompt_block(body: str) -> str:
+def prompt_block(body: str, label: str = '提示词示例') -> str:
     body_safe = body.replace('<', '&lt;').replace('>', '&gt;')
     return f"""
 <div class="prompt-block no-break">
-  <div class="prompt-header">✦ 提示词示例</div>
+  <div class="prompt-header"><span class="emoji">✦</span> {label}</div>
   <div class="prompt-body">{body_safe}</div>
 </div>"""
 
@@ -735,3 +897,229 @@ def hr_section() -> str:
 
 def page_break() -> str:
     return '<div class="page-break"></div>\n'
+
+
+# ═══════════════════════════════════════════════════════════
+#  多格式输出（PDF 默认；HTML / DOCX / Markdown 可选）
+# ═══════════════════════════════════════════════════════════
+# 约定：
+# - basename = 无扩展名的文件名（如 "01_第一课_认识AI"）
+# - out_dir  = 输出目录
+# - chapter  = 页眉/标题用的章节名
+# - body     = HTML 主体
+#
+# 推荐入口 write_course(out_dir, basename, chapter, body, formats=['pdf'])
+# 按 formats 选项分发到对应的 write_* 函数。
+
+SUPPORTED_FORMATS = ('pdf', 'html', 'docx', 'md')
+
+
+def _safe_basename(name: str) -> str:
+    """清理文件名中会导致系统无法识别的字符（全角括号、特殊符号）。"""
+    # 只保留：数字/字母/下划线/点号/中文汉字/减号
+    return re.sub(r'[^0-9A-Za-z_\-.\u4e00-\u9fff]', '_', name)
+
+
+def write_pdf(out_dir: str, basename: str, chapter: str, body: str,
+              brand: str = '课程材料') -> str:
+    """生成 PDF（使用 WeasyPrint）。"""
+    from weasyprint import HTML  # 延迟 import，其他输出格式下无需安装
+    basename = _safe_basename(basename)
+    path = os.path.join(out_dir, f'{basename}.pdf')
+    html_str = make_html(chapter, body, brand=brand)
+    HTML(string=html_str).write_pdf(path)
+    size_kb = os.path.getsize(path) // 1024
+    print(f'  ✅ PDF    {basename}.pdf  ({size_kb} KB)')
+    return path
+
+
+def write_html(out_dir: str, basename: str, chapter: str, body: str,
+               brand: str = '课程材料') -> str:
+    """生成独立 HTML 文件（单文件、内联 CSS，可直接在浏览器打开）。"""
+    basename = _safe_basename(basename)
+    path = os.path.join(out_dir, f'{basename}.html')
+    html_str = make_html(chapter, body, brand=brand)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(html_str)
+    size_kb = os.path.getsize(path) // 1024
+    print(f'  ✅ HTML   {basename}.html  ({size_kb} KB)')
+    return path
+
+
+def write_docx(out_dir: str, basename: str, chapter: str, body: str,
+               brand: str = '课程材料') -> str:
+    """生成 Word DOCX。
+
+    优先使用 pandoc（最稳定，保留丰富格式）；
+    如果 pandoc 不可用，回退到 python-docx 的简化版（仅保留文字层级）。
+    """
+    basename = _safe_basename(basename)
+    path = os.path.join(out_dir, f'{basename}.docx')
+    html_str = make_html(chapter, body, brand=brand)
+
+    # 优先 pandoc
+    if _has_pandoc():
+        tmp_html = os.path.join(out_dir, f'.{basename}.tmp.html')
+        with open(tmp_html, 'w', encoding='utf-8') as f:
+            f.write(html_str)
+        try:
+            subprocess.run(
+                ['pandoc', tmp_html, '-f', 'html', '-t', 'docx',
+                 '-o', path, '--standalone'],
+                check=True, capture_output=True
+            )
+        finally:
+            if os.path.exists(tmp_html):
+                os.remove(tmp_html)
+    else:
+        # 回退：html2docx（若可用）/ 简化转换
+        try:
+            from html2docx import html2docx  # type: ignore
+            buf = html2docx(html_str, title=chapter)
+            with open(path, 'wb') as f:
+                f.write(buf.getvalue())
+        except ImportError:
+            raise RuntimeError(
+                'DOCX 输出需要 pandoc（推荐）或 html2docx 库。\n'
+                '安装方式：\n'
+                '  brew install pandoc                # macOS\n'
+                '  apt install pandoc                 # Linux\n'
+                '  pip install html2docx --break-system-packages'
+            )
+    size_kb = os.path.getsize(path) // 1024
+    print(f'  ✅ DOCX   {basename}.docx  ({size_kb} KB)')
+    return path
+
+
+def write_markdown(out_dir: str, basename: str, chapter: str, body: str,
+                   brand: str = '课程材料') -> str:
+    """生成 Markdown。
+
+    优先用 pandoc（保留标题层级/表格）；否则用 html2text 库；
+    都不可用时做简化正则转换（仅保留文本和一级标题）。
+    """
+    basename = _safe_basename(basename)
+    path = os.path.join(out_dir, f'{basename}.md')
+    html_str = make_html(chapter, body, brand=brand,
+                         auto_normalize_emoji=False)
+
+    md_text = None
+    if _has_pandoc():
+        tmp_html = os.path.join(out_dir, f'.{basename}.tmp.html')
+        with open(tmp_html, 'w', encoding='utf-8') as f:
+            f.write(html_str)
+        try:
+            result = subprocess.run(
+                ['pandoc', tmp_html, '-f', 'html', '-t',
+                 'gfm',  # GitHub-flavored Markdown
+                 '--wrap=none'],
+                check=True, capture_output=True, text=True
+            )
+            md_text = result.stdout
+        finally:
+            if os.path.exists(tmp_html):
+                os.remove(tmp_html)
+    else:
+        try:
+            import html2text  # type: ignore
+            h = html2text.HTML2Text()
+            h.body_width = 0  # 不自动换行
+            h.ignore_images = False
+            md_text = h.handle(html_str)
+        except ImportError:
+            md_text = _html_to_markdown_fallback(html_str)
+
+    # 在顶部补一个 h1 标题（pandoc 版本常丢失）
+    if md_text and not md_text.lstrip().startswith('#'):
+        md_text = f'# {chapter}\n\n{md_text}'
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(md_text)
+    size_kb = max(1, os.path.getsize(path) // 1024)
+    print(f'  ✅ MD     {basename}.md  ({size_kb} KB)')
+    return path
+
+
+def write_course(out_dir: str, basename: str, chapter: str, body: str,
+                 formats=('pdf',), brand: str = '课程材料') -> dict:
+    """多格式统一入口。
+
+    示例：
+      write_course(
+          out_dir='./out',
+          basename='01_第一课_认识AI',
+          chapter='第一课',
+          body=my_body_html,
+          formats=['pdf', 'html'],
+      )
+
+    返回：{'pdf': path, 'html': path, ...}
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    dispatch = {
+        'pdf':  write_pdf,
+        'html': write_html,
+        'docx': write_docx,
+        'md':   write_markdown,
+    }
+    results = {}
+    for fmt in formats:
+        fmt = fmt.lower().lstrip('.')
+        if fmt not in dispatch:
+            raise ValueError(
+                f'不支持的输出格式: {fmt}。支持: {SUPPORTED_FORMATS}'
+            )
+        results[fmt] = dispatch[fmt](out_dir, basename, chapter, body, brand)
+    return results
+
+
+# ─── 内部工具 ────────────────────────────────────────────
+def _has_pandoc() -> bool:
+    """检测 pandoc 是否可用。"""
+    try:
+        subprocess.run(['pandoc', '--version'],
+                       capture_output=True, check=True)
+        return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return False
+
+
+def _html_to_markdown_fallback(html: str) -> str:
+    """极简 HTML→MD 转换（pandoc 和 html2text 都不可用时的兜底）。
+
+    只处理最基本的标签，保证文本层级可读。复杂表格/卡片降级为普通段落。
+    """
+    text = html
+    # 删除 style/script
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    # 标题
+    text = re.sub(r'<h1[^>]*>(.*?)</h1>', r'\n# \1\n', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<h2[^>]*>(.*?)</h2>', r'\n## \1\n', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<h3[^>]*>(.*?)</h3>', r'\n### \1\n', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    # 强调
+    text = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<code[^>]*>(.*?)</code>', r'`\1`', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    # 段落和换行
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'</p>', '\n\n', text, flags=re.IGNORECASE)
+    # 列表
+    text = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', text,
+                  flags=re.DOTALL | re.IGNORECASE)
+    # 删掉所有剩余的 HTML 标签
+    text = re.sub(r'<[^>]+>', '', text)
+    # 压缩空白
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    # HTML 实体
+    text = text.replace('&lt;', '<').replace('&gt;', '>')
+    text = text.replace('&amp;', '&').replace('&nbsp;', ' ')
+    return text.strip()

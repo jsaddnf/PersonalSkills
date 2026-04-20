@@ -1,18 +1,21 @@
 ---
 name: course-creator
 description: >
-  创建结构化、多课时的 PDF 课程材料。适用于用户想把某个知识领域（如提示词工程、产品管理、
+  创建结构化、多课时的课程材料。适用于用户想把某个知识领域（如提示词工程、产品管理、
   数据分析、销售技巧等）制作成系统化课程的场景。每节课约 1 小时学习量，包含课程导读、
-  各课正文、练习题和独立的答案手册，均以 PDF 格式输出并打包为 ZIP 提供下载。
-  触发词包括：制作课程、编写课程、设计课程、做成教程、写成教材、课程 PDF 等。
+  各课正文、练习题和独立的答案手册。默认输出 PDF，可选 HTML / Word / Markdown。
+  触发词包括：制作课程、编写课程、设计课程、做成教程、写成教材、课程 PDF / HTML / Word 等。
 ---
 
 # Course Creator Skill
 
 ## 概述
 
-本 Skill 将一个知识领域制作成完整、专业、可下载的 PDF 课程包。
-核心技术栈：**Python + WeasyPrint（HTML→PDF）**，利用 Noto Sans CJK SC 系统字体处理中文。
+本 Skill 将一个知识领域制作成完整、专业、可下载的课程包。
+核心技术栈：**Python + WeasyPrint（HTML→PDF）**，字体优先使用 **PingFang SC（苹方）**，
+Linux/服务器渲染时自动降级到 Noto Sans CJK SC。
+
+**默认输出格式：PDF**。可选同时生成 HTML / DOCX / Markdown（在需求确认阶段询问用户）。
 
 ---
 
@@ -30,8 +33,25 @@ description: >
    - 如果用户不确定，Claude 根据主题复杂度给出建议区间让用户选择
    - 例：「根据你的主题，我建议 6~9 课，你倾向于精简版（6课）还是完整版（9课）？」
    - 课时数直接影响学习者时间投入预期，属于用户决策权
-6. 输出格式偏好？（PDF 是默认推荐）
+6. 输出格式？（PDF 是默认，可多选）
+   - ☑ PDF（默认，印刷/离线查看最佳）
+   - ☐ HTML（可在线查看、分享链接、可嵌入网站）
+   - ☐ DOCX（便于二次编辑、写批注）
+   - ☐ Markdown（便于迁移到 Notion / GitHub / 飞书）
+   - 用 ask_user_input_v0 的 multiSelect 模式询问
+   - 不同格式会增加生成时间，建议只选真正需要的
 ```
+
+### 关于输出格式的技术决策
+
+| 格式 | 推荐度 | 适用场景 | 依赖 |
+|------|--------|----------|------|
+| PDF  | ★★★★★ | 默认；印刷、归档、离线查看 | `weasyprint` |
+| HTML | ★★★★☆ | 在线课程、可嵌入 iframe、支持深链 | 无（生成独立单文件 HTML） |
+| DOCX | ★★★☆☆ | 学员要改批注、打印带修订版 | `pandoc`（推荐）或 `html2docx` |
+| MD   | ★★★☆☆ | 迁移到 Notion/GitHub/飞书妙记 | `pandoc`（推荐）或 `html2text` |
+
+统一由 `course_design.py` 的 `write_course(..., formats=['pdf','html','docx','md'])` 入口分发。
 
 **不需要确认的**（Claude 自行决定）：
 - 设计风格（遵循本 Skill 的设计系统）
@@ -91,16 +111,42 @@ description: >
 # 检查中文字体
 import subprocess
 result = subprocess.run(['fc-list', ':lang=zh'], capture_output=True, text=True)
-# 确认 Noto Sans CJK SC 可用
 
 # 检查 WeasyPrint
 from weasyprint import HTML
 # 如未安装：pip install weasyprint --break-system-packages -q
 
-# 字体确认清单（按优先级）：
-# ✅ Noto Sans CJK SC（最佳，系统自带）
-# ✅ WenQuanYi Zen Hei（备选）
-# ❌ ReportLab TTFont + Noto CJK TTC 文件（PostScript 格式，不兼容）
+# 可选：检查 pandoc（DOCX / MD 输出需要）
+pandoc_ok = subprocess.run(['pandoc', '--version'],
+                           capture_output=True).returncode == 0
+```
+
+### 字体优先级（关键）
+
+本 Skill 统一使用 **苹方字体（PingFang SC）** 作为首选：
+
+```
+1) PingFang SC / TC / HK   ← 首选（Apple 平台自带，最美观）
+2) Noto Sans CJK SC        ← 兜底（Linux/服务器端 WeasyPrint 渲染用）
+3) Source Han Sans SC      ← 开源备选（同思源黑体）
+4) Microsoft YaHei         ← Windows 兜底
+5) Hiragino Sans GB        ← Mac 老系统兜底
+```
+
+> **为什么 PingFang 放第一位？**
+> macOS 用户本地查看 PDF/HTML 时会优先使用苹方，字形更优雅；
+> 在 Linux 服务器渲染 PDF 的过程中会自动落到 Noto Sans CJK SC。
+> 两种场景都得到最好的视觉效果。
+
+**不要自己在批次脚本里重新定义字体栈**，必须引用 `course_design.py` 中的 `BASE_CSS`。
+
+### 字体踩坑备忘
+
+```
+❌ ReportLab TTFont + Noto CJK TTC 文件   （PostScript 格式，不兼容）
+❌ 在脚本里覆盖 font-family                （会打破统一性）
+❌ 混用 PingFang 和 思源黑体               （字重体系不同，标题不对齐）
+✅ 只用 course_design.py 的 BASE_CSS      （已经按优先级配好）
 ```
 
 ### 3.2 关键技术决策
@@ -341,20 +387,40 @@ def lesson_ans_header(num_cn, num_en, title):
 /mnt/user-data/outputs/{课程名}_完整版.zip  ← 打包交付
 ```
 
-### 7.3 write_pdf 标准函数
+### 7.3 多格式统一输出（write_course）
+
+`course_design.py` 已内置多格式分发器，batch 脚本直接调用即可：
 
 ```python
-def write_pdf(filename, chapter, body):
-    """
-    filename: 文件名（无路径），不含全角字符
-    chapter:  页眉显示的章节名
-    body:     HTML body 内容
-    """
-    path = os.path.join(OUT, filename)
-    HTML(string=make_html(chapter, body)).write_pdf(path)
-    size_kb = os.path.getsize(path) // 1024
-    print(f'  ✅ {filename}  ({size_kb} KB)')
+from course_design import write_course
+
+# 单格式（PDF，默认）
+write_course(
+    out_dir='/mnt/user-data/outputs/提示词工程课/final',
+    basename='01_第一课_认识AI',      # 无扩展名，会自动清理特殊字符
+    chapter='第一课',                 # 页眉章节名
+    body=lesson1_body_html,           # 已组装好的 body
+    formats=['pdf'],                   # 只输 PDF
+    brand='提示词工程实战课',           # 页眉左侧品牌
+)
+
+# 多格式（用户选了 PDF + HTML + DOCX）
+write_course(
+    out_dir=out_dir,
+    basename='01_第一课_认识AI',
+    chapter='第一课',
+    body=lesson1_body_html,
+    formats=['pdf', 'html', 'docx'],
+)
 ```
+
+单独调用各格式：
+- `write_pdf(out_dir, basename, chapter, body, brand)`
+- `write_html(out_dir, basename, chapter, body, brand)`
+- `write_docx(out_dir, basename, chapter, body, brand)` — 需 pandoc
+- `write_markdown(out_dir, basename, chapter, body, brand)` — 需 pandoc
+
+所有函数**自动调用 normalize_emoji()**，无需手动处理 emoji 包裹。
 
 ---
 
@@ -439,11 +505,126 @@ unzip -l /mnt/user-data/outputs/{课程名}_完整版.zip
 
 ---
 
+## 第十阶段：Emoji 与特殊字符处理规范（重要）
+
+### 10.1 为什么要特殊处理 emoji？
+
+emoji 在课程 PDF 中大量使用（🌱🌿🌳 表难度、✅❌表对错、📌💡⚡表类别），
+但直接裸写会导致以下排版问题：
+
+```
+问题         具体表现                            原因
+────────────────────────────────────────────────────────
+撑破行高     一行里有 emoji 的比其它行更高      emoji 原生字形比汉字高
+上下错位     emoji 浮在基线上或沉到下方         baseline 不对齐
+字号变形     emoji 比同段文字看着大一号         emoji 字体默认字号不同
+粗体溢出     加粗段里的 emoji 变形              emoji 继承了 bold
+豆腐框       部分环境显示成 □                   字体栈没配 emoji fallback
+行首断行     emoji 触发奇怪的换行点             word-break 不当
+```
+
+### 10.2 解决方案：强制样式规范化
+
+在 `course_design.py` 中已内置完整方案：
+
+```css
+/* CSS 端：锁定 emoji 外观 */
+.emoji {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji',
+                 'Noto Color Emoji', 'Twemoji Mozilla',
+                 'Noto Emoji', sans-serif;
+    font-size: 0.95em;         /* 锁定大小 */
+    font-style: normal;        /* 防斜体继承 */
+    font-weight: 400;          /* 防加粗继承 */
+    line-height: 1;            /* 不撑破行高 */
+    vertical-align: -0.08em;   /* 基线微调对齐 */
+    display: inline-block;     /* 限制影响范围 */
+    white-space: nowrap;
+    word-break: keep-all;      /* 防奇怪换行 */
+}
+```
+
+```python
+# Python 端：自动包裹工具
+from course_design import normalize_emoji, emoji, strip_emoji
+
+# 1) 自动包裹（推荐）——make_html 默认开启，无需手动调用
+make_html(chapter, body_html)   # auto_normalize_emoji=True
+
+# 2) 手动在组件里精确控制
+f'<h3>{emoji("🌱")} 基础题</h3>'
+
+# 3) emoji-free 模式（特殊场景：老旧打印机、OCR 前处理）
+plain_title = strip_emoji('🌱 基础题')   # → " 基础题"
+```
+
+### 10.3 规范：emoji 编辑七要素
+
+```
+1. 只从"推荐 emoji 集"中选用，不要用生僻 emoji（见 10.4）
+2. 单个元素至多 1 个 emoji，不要连续堆砌（如 ✨🎉🌟🎊）
+3. 不要在标题的末尾用 emoji（容易触发断行）
+4. 同一类型信息用同一个 emoji，全课程统一
+   （如"小贴士"永远用 💡、"练习题"永远用 ✏️）
+5. 永远不要把 emoji 放进 <strong>/<em>/<code> 内部
+6. 永远不要直接在 HTML 属性里用 emoji（如 title="⭐"）
+7. 生成完 body_html 后，必须经过 make_html() 或手动 normalize_emoji()
+```
+
+### 10.4 推荐 emoji 集（全课程统一使用）
+
+```
+类别              emoji   用途                   对应函数
+─────────────────────────────────────────────────────────
+核心知识点        📌      标注重点              card_key
+小贴士            💡      额外提示              card_tip
+好示例            ✅      正确做法              card_good
+坏示例            ❌      反面教材              card_bad
+练习题            ✏️      题目区                card_exercise
+进阶技巧          ⚡      高阶内容              card_advanced
+参考答案          ✅      答案手册              card_answer
+提示词示例        ✦       prompt 块             prompt_block
+时长              ⏱       封面 meta             lesson_cover
+主题数            📚      封面 meta             lesson_cover
+基础难度          🌱      题目标签              手动
+进阶难度          🌿      题目标签              手动
+挑战难度          🌳      题目标签              手动
+新增内容          🆕      大纲备注              手动
+加厚内容          🔧      大纲备注              手动
+```
+
+> 这 15 个 emoji 已经足够覆盖全部课程需求。**不要自己创造新的**。
+
+### 10.5 验证 emoji 未撑破排版
+
+生成 PDF 后用 pdfplumber 抽样检查行高：
+
+```python
+import pdfplumber
+with pdfplumber.open(pdf_path) as pdf:
+    for page in pdf.pages[:3]:
+        # 检查同一行内字符高度是否一致
+        chars = page.chars
+        by_row = {}
+        for c in chars:
+            row_key = round(c['top'], 0)
+            by_row.setdefault(row_key, []).append(c['height'])
+        # 同一行字号方差应该很小（< 2pt）
+        for row, heights in by_row.items():
+            if max(heights) - min(heights) > 3:
+                print(f'⚠️ 行 {row} 字号差异异常: '
+                      f'{min(heights):.1f} ~ {max(heights):.1f}')
+```
+
+如果出现字号差异警告，检查该行是否有裸 emoji（未被 span class="emoji" 包裹）。
+
+---
+
 ## 常见问题与解决方案
 
 ### ❌ 问题1：中文 PDF 生成乱码或字体显示异常
 **原因**：ReportLab TTFont 不支持 Noto CJK TTC 文件（CFF/PostScript 格式）
-**解决**：改用 WeasyPrint，CSS 直接声明 `font-family: 'Noto Sans CJK SC'`
+**解决**：改用 WeasyPrint，字体栈优先使用 PingFang SC，兜底 Noto Sans CJK SC
 
 ### ❌ 问题2：文件无法预览/下载
 **原因**：文件名包含全角括号 `（）` 等特殊字符
@@ -460,6 +641,22 @@ unzip -l /mnt/user-data/outputs/{课程名}_完整版.zip
 ### ❌ 问题5：练习题没有反馈机制，学习者不知道答得对不对
 **原因**：练习题设计为开放式，答案模糊
 **解决**：每道答案必须包含"评分要点"——明确说明正确答案的判断标准
+
+### ❌ 问题6：PDF 里 emoji 撑破行高 / 字号变形 / 显示成豆腐框
+**原因**：emoji 原生字形比汉字大，基线不对齐；字体栈未包含 emoji fallback
+**解决**：
+1. 所有 emoji 必须用 `<span class="emoji">` 包裹（或依赖 `make_html()` 自动规范化）
+2. CSS 端 `.emoji` 类锁定 font-size / line-height / vertical-align
+3. 只使用第 10.4 节的"推荐 emoji 集"，不要用生僻 emoji
+
+### ❌ 问题7：DOCX / Markdown 输出失败
+**原因**：未安装 pandoc 或 html2docx / html2text
+**解决**：
+```bash
+brew install pandoc                                # macOS 推荐
+apt install pandoc                                 # Linux
+pip install html2docx html2text --break-system-packages  # Python 兜底
+```
 
 ### ⚠️ 注意：生成脚本分批运行
 **原因**：课程内容量大，单个脚本超过 context 限制容易截断
@@ -502,15 +699,27 @@ unzip -l /mnt/user-data/outputs/{课程名}_完整版.zip
 ## 执行流程总结（Checklist）
 
 ```
-□ 阶段一：需求确认（ask_user_input_v0 收集关键参数）
+□ 阶段一：需求确认
+    · 学习者/语言/主题/深度/课时数
+    · 输出格式（PDF 默认，可多选 HTML / DOCX / MD）
 □ 阶段二：起草大纲 → 展示给用户 → 讨论覆盖度和深度 → 用户确认
-□ 阶段三：检查技术环境（字体、WeasyPrint）
-□ 阶段四：创建 course_design.py（设计系统，一次性创建，后续复用）
+□ 阶段三：检查技术环境
+    · 字体：fc-list | grep -i "PingFang\|Noto CJK" 至少有一个
+    · WeasyPrint 已安装
+    · 如需 DOCX/MD：pandoc 已安装（优先）或 html2docx/html2text
+□ 阶段四：创建 course_design.py（设计系统，从本 Skill 拷贝，不要修改）
 □ 阶段五：创建内容生成脚本（分 batch，每批 2-3 课）
+    · 所有 emoji 只用第 10.4 节的"推荐集合"
+    · 生成的 body_html 由 make_html() 自动 normalize_emoji()
 □ 阶段六：生成第一批（导读 + 第1课）→ 用户预览确认排版
+    · 重点检查：emoji 是否撑破行高、字体是否是苹方
 □ 阶段七：生成剩余各课
 □ 阶段八：生成完整答案手册（每课强制分页）
-□ 阶段九：运行验证脚本（内容完整性 + 文件名检查）
-□ 阶段十：整理 final 目录（统一命名，无全角字符）
-□ 阶段十一：打包 ZIP → present_files 提供下载
+□ 阶段九：运行验证脚本
+    · 内容完整性 + 文件名检查
+    · emoji 排版验证（pdfplumber 检查字符高度一致）
+□ 阶段十：按需多格式输出
+    · write_course(out_dir, basename, chapter, body, formats=[...])
+□ 阶段十一：整理 final 目录（统一命名，无全角字符）
+□ 阶段十二：打包 ZIP → present_files 提供下载
 ```
