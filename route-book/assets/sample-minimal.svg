@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 2050" width="720" height="2050" font-family="'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif">
+  <title>7 日青甘小环线</title>
+  <desc>7-day Qinghai-Gansu loop self-driving road book</desc>
+
+  <!-- Background -->
+  <rect width="720" height="2050" fill="#fbfaf7"/>
+
+  <!-- ================ TITLE BLOCK ================ -->
+  <text x="60" y="86" fill="#a59e93" font-size="11" font-weight="700" letter-spacing="4">ROAD TRIP · OCT 2026</text>
+  <text x="60" y="146" fill="#1c1916" font-size="44" font-weight="700" letter-spacing="-0.5">7 日青甘小环线</text>
+  <text x="60" y="180" fill="#6b6258" font-size="14">2026.10.1 — 10.7　·　总里程约 1750 km　·　国庆避堵</text>
+
+  <!-- Title divider (close under subtitle, separating title block from map section) -->
+  <line x1="60" y1="208" x2="660" y2="208" stroke="#e8e3d8" stroke-width="0.8"/>
+
+  <!-- ================ MAP ================ -->
+  <text x="60" y="252" fill="#a59e93" font-size="10" font-weight="700" letter-spacing="3">MAP</text>
+
+  <!-- 青海湖 -->
+  <ellipse cx="500" cy="595" rx="42" ry="14" fill="#cbd6dc" opacity="0.55"/>
+  <text x="500" y="598" text-anchor="middle" fill="#7c8b94" font-size="9">青海湖</text>
+
+  <!-- ===== ROUTE PATH ===== -->
+  <path d="M 640 615 Q 595 635 550 650 Q 505 633 460 615 Q 400 570 340 525 Q 200 520 75 510 Q 130 488 190 465 Q 165 343 140 220"
+        fill="none" stroke="#2c2925" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Train return route -->
+  <path d="M 145 240 Q 380 380 640 615"
+        fill="none" stroke="#a59e93" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="5 4" opacity="0.7"/>
+  <text x="408" y="378" fill="#8a8175" font-size="10" text-anchor="middle" transform="rotate(31 408 378)">— 火车返程 —</text>
+
+  <!-- Elevation pass markers -->
+  <g transform="translate(615 622)">
+    <path d="M 0,-5 L 4,3 L -4,3 Z" fill="#8a8175"/>
+    <text x="0" y="-9" text-anchor="middle" fill="#6b6258" font-size="9">3820m</text>
+  </g>
+  <g transform="translate(515 615)">
+    <path d="M 0,-5 L 4,3 L -4,3 Z" fill="#8a8175"/>
+    <text x="0" y="-9" text-anchor="middle" fill="#6b6258" font-size="9">3793m</text>
+  </g>
+  <g transform="translate(155 305)">
+    <path d="M 0,-6 L 5,4 L -5,4 Z" fill="#8a8175"/>
+    <text x="14" y="3" fill="#6b6258" font-size="9">3800m</text>
+  </g>
+
+  <!-- ===== Stop nodes ===== -->
+  <circle cx="640" cy="615" r="6" fill="#2c2925"/>
+  <circle cx="640" cy="615" r="11" fill="none" stroke="#2c2925" stroke-width="1" opacity="0.35"/>
+  <text x="650" y="610" fill="#1c1916" font-size="14" font-weight="700">西宁</text>
+  <text x="650" y="626" fill="#a59e93" font-size="10">起 / 终</text>
+
+  <circle cx="550" cy="650" r="5" fill="#2c2925"/>
+  <text x="556" y="668" fill="#1c1916" font-size="13" font-weight="600">共和</text>
+
+  <circle cx="460" cy="615" r="5" fill="#2c2925"/>
+  <text x="455" y="603" text-anchor="end" fill="#1c1916" font-size="13" font-weight="600">茶卡</text>
+
+  <circle cx="340" cy="525" r="5" fill="#2c2925"/>
+  <text x="340" y="513" text-anchor="middle" fill="#1c1916" font-size="13" font-weight="600">德令哈</text>
+
+  <circle cx="75" cy="510" r="3.5" fill="#fbfaf7" stroke="#2c2925" stroke-width="1.8"/>
+  <text x="84" y="514" fill="#3c3530" font-size="11">水上雅丹</text>
+
+  <circle cx="190" cy="465" r="5" fill="#2c2925"/>
+  <text x="200" y="461" fill="#1c1916" font-size="13" font-weight="600">大柴旦</text>
+
+  <circle cx="140" cy="220" r="6" fill="#2c2925"/>
+  <circle cx="140" cy="220" r="11" fill="none" stroke="#2c2925" stroke-width="1" opacity="0.35"/>
+  <text x="156" y="217" fill="#1c1916" font-size="14" font-weight="700">敦煌</text>
+  <text x="156" y="233" fill="#a59e93" font-size="10">还车地</text>
+
+  <!-- Distance labels -->
+  <g fill="#8a8175" font-size="10" font-style="italic">
+    <text x="608" y="640" text-anchor="middle">280</text>
+    <text x="505" y="640" text-anchor="middle">170</text>
+    <text x="395" y="568" text-anchor="middle">190</text>
+    <text x="208" y="500" text-anchor="middle">410</text>
+    <text x="135" y="503" text-anchor="middle">120</text>
+    <text x="180" y="345" text-anchor="middle">360</text>
+  </g>
+
+  <!-- Map legend (单位 · 公里 moved to x=600 to fit within 60-660 bounds) -->
+  <g transform="translate(60 700)">
+    <line x1="0" y1="0" x2="20" y2="0" stroke="#2c2925" stroke-width="2.2"/>
+    <text x="26" y="3" fill="#8a8175" font-size="10">自驾</text>
+    <line x1="80" y1="0" x2="100" y2="0" stroke="#a59e93" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <text x="106" y="3" fill="#8a8175" font-size="10">火车</text>
+    <path d="M 165,-1 L 169,4 L 161,4 Z" fill="#8a8175"/>
+    <text x="174" y="3" fill="#8a8175" font-size="10">高海拔垭口</text>
+    <text x="600" y="3" text-anchor="end" fill="#cac3b3" font-size="9">单位 · 公里</text>
+  </g>
+
+  <!-- ================ DAILY ================ -->
+  <line x1="60" y1="755" x2="660" y2="755" stroke="#e8e3d8" stroke-width="0.8"/>
+  <text x="60" y="781" fill="#a59e93" font-size="10" font-weight="700" letter-spacing="3">DAILY</text>
+
+  <!-- ===== DAY 1 ===== -->
+  <g transform="translate(60 820)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 1</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月1日 · 周四</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">西宁集合</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">0 km</text>
+    <text x="0" y="80" font-size="14">🕌</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">东关清真大寺</text>
+    <text x="0" y="104" font-size="14">🏛️</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">马步芳公馆</text>
+    <text x="0" y="128" font-size="14">🍜</text>
+    <text x="32" y="128" fill="#3c3530" font-size="14">力盏街晚餐</text>
+  </g>
+
+  <!-- ===== DAY 2 ===== -->
+  <g transform="translate(60 990)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 2</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月2日 · 周五</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">西宁 → 共和</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">280 km · 5-6 h</text>
+    <text x="0" y="80" font-size="14">⛰️</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">拉脊山垭口（3820m）</text>
+    <text x="0" y="104" font-size="14">🌾</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">倒淌河</text>
+    <text x="0" y="128" font-size="14">🏞️</text>
+    <text x="32" y="128" fill="#3c3530" font-size="14">青海湖南岸 G109</text>
+  </g>
+
+  <!-- ===== DAY 3 ===== -->
+  <g transform="translate(60 1160)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 3</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月3日 · 周六</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">共和 → 茶卡 → 德令哈</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">330 km · 5 h</text>
+    <text x="0" y="80" font-size="14">🧂</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">茶卡盐湖（早起赶第一波）</text>
+    <text x="0" y="104" font-size="14">⛰️</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">橡皮山垭口（3793m）</text>
+    <text x="0" y="128" font-size="14">🌅</text>
+    <text x="32" y="128" fill="#3c3530" font-size="14">可鲁克 - 托素湖日落</text>
+    <text x="0" y="152" font-size="14">🛸</text>
+    <text x="32" y="152" fill="#3c3530" font-size="14">外星人遗址</text>
+  </g>
+
+  <!-- ===== DAY 4 ===== -->
+  <g transform="translate(60 1354)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 4</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月4日 · 周日</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">德令哈 → 大柴旦</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">410 km · 6-7 h（最长）</text>
+    <text x="0" y="80" font-size="14">🛣️</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">G315 U 型公路</text>
+    <text x="0" y="104" font-size="14">💎</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">东台吉乃尔湖</text>
+    <text x="0" y="128" font-size="14">🏝️</text>
+    <text x="32" y="128" fill="#3c3530" font-size="14">水上雅丹（日落最佳）</text>
+  </g>
+
+  <!-- ===== DAY 5 ===== -->
+  <g transform="translate(60 1524)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 5</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月5日 · 周一</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">大柴旦 → 敦煌</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">360 km · 5 h</text>
+    <text x="0" y="80" font-size="14">💎</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">大柴旦翡翠湖（晨拍）</text>
+    <text x="0" y="104" font-size="14">⛰️</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">当金山口（3800m）</text>
+    <text x="0" y="128" font-size="14">🏚️</text>
+    <text x="32" y="128" fill="#3c3530" font-size="14">阿克塞老县城</text>
+    <text x="0" y="152" font-size="14">🍜</text>
+    <text x="32" y="152" fill="#3c3530" font-size="14">沙州夜市</text>
+  </g>
+
+  <!-- ===== DAY 6 ===== -->
+  <g transform="translate(60 1718)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 6</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月6日 · 周二</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">敦煌一日</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">市内 ~80 km</text>
+    <text x="0" y="80" font-size="14">🏛️</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">莫高窟</text>
+    <text x="0" y="104" font-size="14">🐪</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">鸣沙山月牙泉</text>
+    <text x="0" y="130" fill="#6b6258" font-size="13">备选：阳关 / 玉门关 / 雅丹魔鬼城</text>
+  </g>
+
+  <!-- ===== DAY 7 ===== -->
+  <g transform="translate(60 1888)">
+    <text x="0" y="0" fill="#2c2925" font-size="11" font-weight="700" letter-spacing="2">DAY 7</text>
+    <text x="600" y="0" text-anchor="end" fill="#6b6258" font-size="12">10月7日 · 周三</text>
+    <line x1="0" y1="14" x2="600" y2="14" stroke="#e8e3d8" stroke-width="0.6"/>
+    <text x="0" y="46" fill="#1c1916" font-size="22" font-weight="700">敦煌 → 西宁</text>
+    <text x="600" y="46" text-anchor="end" fill="#8a8175" font-size="13">火车 5-6 h</text>
+    <text x="0" y="80" font-size="14">🚗</text>
+    <text x="32" y="80" fill="#3c3530" font-size="14">上午敦煌还车</text>
+    <text x="0" y="104" font-size="14">🚆</text>
+    <text x="32" y="104" fill="#3c3530" font-size="14">敦煌站 D / Z 直达西宁</text>
+  </g>
+</svg>
