@@ -244,6 +244,76 @@ ol { counter-reset: ol-counter; }
 ol li::before { content: counter(ol-counter); background: #2563EB; color: white; }
 ```
 
+### 4.5 为什么 HTML 不能直接复用 PDF 样式
+
+PDF 是给印刷/A4 阅读设计的，HTML 是给屏幕滚动阅读设计的。两者根本不同：
+
+| 维度 | PDF | HTML |
+|------|-----|------|
+| 容器宽度 | `@page margin` 给版心 | 没有版心约束，文字撑满 viewport |
+| 单位系统 | `pt`（印刷单位） | `px` / `rem`（屏幕单位） |
+| 字体大小 | 10.5pt（印刷阅读距离） | 16px（屏幕阅读距离） |
+| 对齐 | `justify` 配合连字符 | 浏览器无连字符算法，justify 出大空隙 |
+| 断字 | `word-break: break-all` 节省空间 | 会切断英文单词，可读性差 |
+| 留白 | 印刷工艺要求的页边距 | 需要主动设计阅读容器 |
+| 响应式 | 不需要 | 必须支持手机/平板/PC |
+
+### 4.6 HTML 阅读容器规范
+
+- **最大宽度**：760px（≈ 60-75 CJK 字符/行，最舒适阅读宽度）
+- **页面背景**：`#F5F6F8`（暖灰，护眼）
+- **容器背景**：`#FFFFFF` + 微阴影
+- **圆角**：16px（PC）/ 12px（平板）/ 0px（手机）
+- **内边距**：56px 64px（PC）→ 36px 28px（平板）→ 28px 20px（手机）
+
+### 4.7 字号体系（屏幕）
+
+```
+body          16px  / 1.85 / letter-spacing 0.02em
+h2            22px  / 1.45 / margin-top 48px
+h3            18px  / 1.55 / margin-top 32px
+p             16px  / 1.85 / margin-bottom 18px
+ul/ol li      16px  / 1.75 / item gap 8px
+table cell    14-15px
+卡片正文       15.5px
+封面标题       30px
+```
+
+### 4.8 间距节奏（8px 栅格）
+
+```
+xs   = 4px    小元素内
+sm   = 8px    段落内、列表项
+md   = 16px  段落间、卡片标题-正文
+lg   = 24px  卡片外边距
+xl   = 40px  大区块间
+2xl  = 56px  h2 章节切换
+```
+
+### 4.9 响应式断点
+
+| 屏幕 | 容器宽度 | 容器内边距 | 容器圆角 |
+|------|---------|----------|---------|
+| ≥ 1024px | 760px | 56px 64px | 16px |
+| 768-1024px | calc(100% - 64px) | 48px 48px | 16px |
+| 480-768px | calc(100% - 32px) | 36px 28px | 12px |
+| < 480px | 100% | 28px 20px | 0 |
+
+### 4.10 HTML 必须改的 PDF 默认（关键修复）
+
+- `text-align: justify` → `text-align: left`（HTML 无连字符算法）
+- `word-break: break-all` → `overflow-wrap: anywhere`（CJK 自然换行 + 长 URL 兜底）
+- `pt` → `px`（屏幕单位）
+- 不依赖 `@page` 约束（屏幕无效）
+
+### 4.11 PDF/HTML 兼容策略（关键）
+
+所有 HTML 屏幕优化包在 `@media screen { ... }` 里：
+- WeasyPrint 渲染 PDF 时只读 `@media print`，会自动忽略 screen 规则
+- 浏览器渲染 HTML 时读 `@media screen`，覆盖 PDF 默认值
+
+**一份 CSS，两种渲染。**具体实现见 `course_design.py` 中的 `HTML_SCREEN_CSS` 常量，自 v2 起 `make_html()` 会同时注入 `BASE_CSS + HTML_SCREEN_CSS`。
+
 ---
 
 ## 第五阶段：内容生成规范

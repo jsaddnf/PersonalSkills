@@ -652,6 +652,251 @@ code {
 
 
 # ═══════════════════════════════════════════════════════════
+#  HTML 屏幕阅读专属 CSS（包在 @media screen 内，PDF 不受影响）
+#  设计规范 v1：见 ~/Downloads/courses/ai-pm-transition/DESIGN_SPEC.md
+# ═══════════════════════════════════════════════════════════
+HTML_SCREEN_CSS = """
+@media screen {
+    /* ── 1. 页面外层：暖灰背景 + 平滑滚动 ── */
+    html { background: #F5F6F8; scroll-behavior: smooth; }
+    body {
+        background: transparent;
+        font-size: 16px;
+        line-height: 1.85;
+        letter-spacing: 0.02em;
+        color: #1F2937;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* ── 2. 阅读容器：760px max + 居中卡片 ── */
+    .page-body {
+        max-width: 760px;
+        margin: 24px auto 80px;
+        background: #FFFFFF;
+        padding: 56px 64px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05),
+                    0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    /* ── 3. 顶部品牌条（替代 PDF running header） ── */
+    #page-header {
+        max-width: 760px;
+        margin: 24px auto 0;
+        padding: 12px 24px;
+        background: #FFFFFF;
+        border-radius: 12px;
+        border-bottom: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        font-size: 13px;
+    }
+    #page-header .brand { font-size: 13px; }
+    #page-header .chapter { font-size: 13px; }
+    #page-footer { display: none; }
+
+    /* ── 4. 标题层级 ── */
+    h2 {
+        font-size: 22px;
+        line-height: 1.45;
+        margin-top: 48px;
+        margin-bottom: 16px;
+        padding-left: 14px;
+        border-left-width: 4px;
+    }
+    h2:first-child { margin-top: 0; }
+    h3 {
+        font-size: 18px;
+        line-height: 1.55;
+        margin-top: 32px;
+        margin-bottom: 8px;
+    }
+
+    /* ── 5. 正文段落（关键修复） ── */
+    p {
+        font-size: 16px;
+        line-height: 1.85;
+        margin-bottom: 18px;
+        text-align: left;            /* 不用 justify，HTML 没连字符算法 */
+        word-break: normal;          /* 不切英文单词 */
+        overflow-wrap: anywhere;     /* 长 URL/代码自然换行 */
+        letter-spacing: 0.02em;
+    }
+
+    /* ── 6. 列表 ── */
+    ul, ol { margin: 8px 0 18px 0; }
+    ul li, ol li {
+        font-size: 16px;
+        line-height: 1.75;
+        margin-bottom: 8px;
+        padding-left: 22px;
+    }
+    ul li::before { top: 11px; width: 5px; height: 5px; }
+    ol li { padding-left: 30px; }
+    ol li::before {
+        width: 20px; height: 20px;
+        font-size: 11px;
+        line-height: 20px;
+        top: 2px;
+    }
+
+    /* ── 7. 卡片系统 ── */
+    .card {
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin: 24px 0;
+        border-left-width: 4px;
+    }
+    .card-title {
+        font-size: 16px;
+        margin-bottom: 12px;
+        gap: 8px;
+    }
+    .card-body { font-size: 15.5px; line-height: 1.8; }
+    .card-body p { font-size: 15.5px; margin-bottom: 10px; }
+    .card-body ul, .card-body ol { margin-top: 8px; margin-bottom: 0; }
+    .card-body ul li, .card-body ol li { font-size: 15.5px; margin-bottom: 6px; }
+
+    /* ── 8. 课程封面 ── */
+    .lesson-cover {
+        padding: 44px 40px;
+        border-radius: 16px;
+        margin-bottom: 36px;
+    }
+    .lesson-cover .lesson-num { font-size: 12px; margin-bottom: 12px; }
+    .lesson-cover h1.lesson-title {
+        font-size: 30px;
+        line-height: 1.25;
+        margin-bottom: 16px;
+    }
+    .lesson-cover .lesson-desc {
+        font-size: 15px;
+        line-height: 1.75;
+        margin-bottom: 24px;
+    }
+    .lesson-meta { margin-top: 20px; padding-top: 18px; }
+    .lesson-meta-item .label { font-size: 11px; }
+    .lesson-meta-item .value { font-size: 14px; }
+
+    /* ── 9. 课程导读封面 ── */
+    .course-cover {
+        padding: 56px 40px;
+        border-radius: 16px;
+        margin-bottom: 40px;
+    }
+    .course-cover .course-title { font-size: 32px; }
+    .course-cover .course-subtitle { font-size: 16px; line-height: 1.7; }
+
+    /* ── 10. 表格统一升级 ── */
+    .compare-table, .data-table, .toc-table {
+        font-size: 15px;
+        margin: 24px 0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .compare-table th { padding: 12px 18px; font-size: 14px; }
+    .compare-table td { padding: 14px 18px; font-size: 15px; line-height: 1.75; }
+    .data-table thead th, .toc-table thead th {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+    .data-table tbody td, .toc-table tbody td {
+        padding: 12px 16px;
+        font-size: 14.5px;
+        line-height: 1.7;
+    }
+
+    /* ── 11. Prompt 展示块 ── */
+    .prompt-block { border-radius: 10px; margin: 24px 0; }
+    .prompt-header { padding: 10px 16px; font-size: 13px; }
+    .prompt-body {
+        padding: 16px 18px;
+        font-size: 15px;
+        line-height: 1.8;
+        word-break: normal;
+        overflow-wrap: anywhere;
+    }
+
+    /* ── 12. 标签/Tag ── */
+    .tag {
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 6px;
+        margin-right: 6px;
+        margin-bottom: 4px;
+    }
+
+    /* ── 13. 行内样式 ── */
+    strong { color: #0F172A; }
+    em { color: #2563EB; font-weight: 500; }
+    code { font-size: 14px; padding: 2px 6px; border-radius: 4px; }
+
+    /* ── 14. 选中高亮 ── */
+    ::selection { background: #DBEAFE; color: #0F172A; }
+
+    /* ── 15. 分隔线 ── */
+    hr.section-divider { margin: 32px 0 24px; }
+    hr.accent-divider { margin: 32px 0; width: 56px; border-top-width: 2px; }
+
+    /* ── 16. 响应式：1024px 以下 ── */
+    @media (max-width: 1024px) {
+        .page-body, #page-header {
+            max-width: calc(100% - 64px);
+        }
+        .page-body { padding: 48px 48px; }
+    }
+
+    /* ── 17. 响应式：平板 768px 以下 ── */
+    @media (max-width: 768px) {
+        body { font-size: 15.5px; }
+        .page-body, #page-header { max-width: calc(100% - 32px); }
+        .page-body {
+            padding: 36px 28px;
+            border-radius: 12px;
+            margin-top: 16px;
+            margin-bottom: 48px;
+        }
+        #page-header { margin-top: 16px; padding: 10px 16px; }
+        h2 { font-size: 20px; margin-top: 36px; }
+        h3 { font-size: 17px; }
+        .card { padding: 18px 20px; margin: 20px 0; }
+        .lesson-cover { padding: 36px 28px; border-radius: 14px; }
+        .lesson-cover h1.lesson-title { font-size: 24px; }
+        .compare-table th, .compare-table td,
+        .data-table thead th, .data-table tbody td {
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+    }
+
+    /* ── 18. 响应式：手机 480px 以下 ── */
+    @media (max-width: 480px) {
+        body { font-size: 15px; }
+        .page-body, #page-header { max-width: 100%; }
+        .page-body {
+            padding: 28px 20px;
+            border-radius: 0;
+            margin: 0 0 32px 0;
+            box-shadow: none;
+        }
+        #page-header {
+            border-radius: 0;
+            margin: 0;
+            padding: 12px 20px;
+            box-shadow: none;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        h2 { font-size: 19px; padding-left: 10px; }
+        .lesson-cover { padding: 28px 20px; border-radius: 10px; }
+        .lesson-cover h1.lesson-title { font-size: 22px; }
+        .card { padding: 16px 18px; }
+    }
+}
+"""
+
+
+# ═══════════════════════════════════════════════════════════
 #  Emoji 规范化工具（关键模块）
 # ═══════════════════════════════════════════════════════════
 # 问题背景：
@@ -769,8 +1014,11 @@ def make_html(chapter_title: str,
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{chapter_title} · {brand}</title>
 <style>
 {BASE_CSS}
+{HTML_SCREEN_CSS}
 </style>
 </head>
 <body>
