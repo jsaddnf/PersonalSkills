@@ -793,3 +793,282 @@ pip install html2docx html2text --break-system-packages  # Python 兜底
 □ 阶段十一：整理 final 目录（统一命名，无全角字符）
 □ 阶段十二：打包 ZIP → present_files 提供下载
 ```
+
+---
+
+# 附录 A：杂志模式（Magazine Mode）
+
+> 课程模式之外的另一种形态。读者不是"学员"而是"读者"，没有学习路径，可以从任何一页翻开。
+> 适合：家庭科普读物、行业内参、年度报告、生活方式手册。
+
+## A.1 何时用杂志模式
+
+| 维度 | 课程模式 | 杂志模式 |
+|------|---------|---------|
+| 受众 | 学员（要学会某项技能） | 读者（想了解某个话题） |
+| 阅读路径 | 必须从头到尾 | 可任意翻读 |
+| 文件结构 | 多个 PDF（每课一个 + 答案手册） | **单个 PDF**（一本完整杂志） |
+| 章节命名 | "第一课"、"第二课" | "专栏 01"、"专栏 02" |
+| 章节开头 | 学习目标、时长、概述 | **没有**——直接进入故事/引言 |
+| 章节结尾 | 练习题 + 答案 | 思考题（开放式，无标准答案） |
+| 文风 | 教师讲解 | 编辑讲故事 |
+| 视觉密度 | 文字为主 | 文字 + 信息图 + 大数字 + 卡片 |
+| 页面尺寸 | A4 | **A5（148×210mm）**——手机阅读友好 |
+| 正文字号 | 10.5pt | **13pt**——大字号、老花眼友好 |
+
+**决策提示**：
+- 用户说"做成杂志"、"轻松阅读"、"不要每章前面啰嗦"、"放在一个文件里" → 杂志模式
+- 用户说"让爸妈/老人/中老年人看" → 强制杂志模式 + 大字号
+- 内容偏"知识科普 + 生活方式" → 倾向杂志
+- 内容偏"技能训练 + 操作步骤" → 倾向课程
+
+## A.2 设计系统：`magazine_design.py`
+
+本 Skill 目录下提供 `magazine_design.py`，是杂志模式的完整设计系统，**和 `course_design.py` 并行存在**。
+- 不要把杂志组件塞进 `course_design.py`
+- 不要在杂志项目里 import `course_design.py`
+
+### 杂志专用颜色系统
+
+```python
+# 暖色调，摆脱"医院蓝"的冰冷感
+COLORS = {
+    'bg':       '#FAF7F2',  # 米白背景（不用纯白，护眼）
+    'text':     '#2C2C2C',  # 深墨（比纯黑柔和）
+    'green':    '#2D8659',  # 温柔绿（主色）
+    'orange':   '#E89B3C',  # 暖橙（点缀色）
+    'sky':      '#4A90A4',  # 天空蓝（数据类）
+    'purple':   '#8E6BAA',  # 暖紫（情绪类）
+    'berry':    '#B85563',  # 莓红
+    'leaf':     '#6B8E3D',  # 草青
+    'pine':     '#1F6650',  # 深绿
+    'brick':    '#C84135',  # 砖红（仅警示用）
+    'warn':     '#D97706',  # 警示橙
+}
+```
+
+每个专栏一个主题色（`COLUMN_THEMES`），封面色块、章节标题边框、信息卡背景全用该专栏的主题色，视觉一致性强。
+
+### 字号体系（杂志专用，比课程大一档）
+
+```
+封面主标题      48-50pt
+专栏封面标题    38pt
+章节标题 h2     21-22pt
+小节标题 h3     15-16pt
+正文段落        13pt    line-height 1.95
+引言段落 lead   14pt    顶下加横线
+拉出引语 quote  19pt    上下加短装饰线
+大数字 number   56pt    Georgia 衬线体
+卡片标题        12pt
+卡片正文        11.5-12pt
+```
+
+### 杂志专用组件
+
+```python
+mag_cover(title, sub, features, author, publisher, issue)
+    # 满版渐变色封面 + 期刊号 + 本期看点 + 作者署名
+
+toc_page(items)
+    # 目录，左侧专栏号(Georgia 衬线大号字) + 右侧页码
+
+column_cover(num, title, lead)
+    # 整页满版色块封面，专栏号 + 标题 + 一句话引言 + 大图标
+
+col_page_open(num, h2, tag='COLUMN 0X · 第 X 节')
+    # 专栏内章节页开始(自动应用主题色 CSS 变量)
+
+lead_p(text)                  # 加横线的引言段落
+pull_quote(text)              # 拉出引语(带装饰线)
+big_number(num, unit, label)  # 大数字 + 单位 + 说明
+info_card(title, body)        # 主题色背景信息卡
+tip_box(title, body)          # 黄色提示
+danger_box(title, body)       # 红色警示
+story_card(tag, body)         # 案例卡片
+compare(good, good_b, bad, bad_b)  # 左绿右红对比
+data_row(label, value)        # 速查表行
+thinking_box(question, hint)  # 专栏末尾思考题(无答案)
+```
+
+**版权页建议自定义**：默认的 `copyright_page()` 偏严肃。家庭科普读物建议写自定义内联 HTML"读前须知"，用三个色块：黄色（仅供科普参考）+ 绿色（怎么读这本书）+ 粉色（免责声明）。
+
+### 杂志 ≠ 课程，不能复用课程组件
+
+| 课程组件 | 杂志替代 | 为什么 |
+|---------|---------|--------|
+| `lesson_cover()` | `column_cover()` | 杂志不叫"第一课" |
+| `card_exercise()` | `thinking_box()` | 杂志没有作业，只有思考题 |
+| 答案手册 | **没有** | 杂志没有标准答案 |
+| 课末复习 | **没有** | 直接结尾 |
+
+## A.3 渲染管线 ⚠️ 关键
+
+### 字体陷阱（实战踩过的坑）
+
+**❌ 错误流程**：weasyprint → PDF
+- weasyprint 子集化 macOS 系统中文字体（PingFang / Hiragino，都是 **OpenType-CFF** 格式）时
+- **ToUnicode CMap 会写入错误的字形→Unicode 映射**
+- 结果：
+  - poppler / Chrome / Firefox 渲染：✅ 正常（不严格依赖 ToUnicode）
+  - **macOS Preview / qlmanage / Quick Look：❌ 全屏乱码**（"HCO KN CN C F D M"）
+- 这个 bug 在 weasyprint 68 仍存在
+
+**✅ 正确流程**：weasyprint → HTML → **Chrome headless → PDF**
+- weasyprint 只负责把 HTML 排版好（保留它的 CSS 排版能力）
+- Chrome 用 Skia 渲染字体，嵌入为 **Type 3 字体 + Custom encoding**
+- Type 3 = 字形画成 PDF 内部子例程，独立于原字体格式
+- 任何 PDF 阅读器（包括 macOS Preview / 微信内置 / WPS）都能正确渲染
+
+```python
+# 杂志项目的 PDF 生成（最关键的一段代码）
+import subprocess
+
+# 1. weasyprint 只生成 HTML
+with open(html_path, 'w', encoding='utf-8') as f:
+    f.write(HTML_DOC)
+
+# 2. Chrome 把 HTML 转 PDF
+CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+subprocess.run([
+    CHROME,
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--no-pdf-header-footer',
+    '--virtual-time-budget=8000',
+    '--run-all-compositor-stages-before-draw',
+    f'--print-to-pdf={pdf_path}',
+    f'file://{html_path}',
+], capture_output=True, text=True, timeout=300)
+```
+
+**注意**：内容多时（50+ 页 A5），Chrome 渲染可能需要 30-60 秒。subprocess `timeout` 设到 **300 秒** 起步。
+
+### 如何验证 PDF 没有乱码 ⚠️ 必须用对工具
+
+| 工具 | 引擎 | 是否反映 Preview 实际效果 |
+|------|------|------|
+| `pdftoppm` | poppler | ❌ **不反映**——poppler 不严格按 ToUnicode |
+| `qlmanage -t -s 1500 -o /tmp file.pdf` | **CoreGraphics（同 Preview）** | ✅ **必须用这个验证** |
+| 直接 `open file.pdf` | macOS Preview | ✅ 最终用户体验 |
+
+**血泪教训**：之前用 `pdftoppm` 转 PNG 自我验证一直显示正常，但用户在 Preview 看到的是全屏乱码。后来换 `qlmanage` 才复现问题。
+
+**强制规范**：杂志模式 PDF 生成后，**必须**用 `qlmanage` 渲染至少 3 页转 PNG，确认无乱码再交付。
+
+### 如果用户系统没有 Chrome
+
+退而求其次的方案（按优先级）：
+1. 让用户用 Chrome / Edge / Brave 任一 Chromium 浏览器手动打印 HTML
+2. 装 `brew install --cask chromium`（征得用户同意）
+3. Playwright / Puppeteer（需要 Node.js）
+
+**不要建议换字体**——用户对 PingFang 美感有要求，换思源黑体或 Noto Sans 是降级。
+
+## A.4 emoji 正则的"通用标点陷阱"
+
+之前的 emoji 正则范围太宽，把 General Punctuation (`U+2000-U+206F`) 圈进去，导致 `——`、`……`、`""` 这些 CJK 标点被当成 emoji 包裹，进而被 emoji 字体栈接管——emoji 字体不含这些字符 → 显示 `[?][?]`（豆腐框）。
+
+**正确的 emoji 正则范围**（只匹配真 emoji 码点）：
+
+```python
+_EMOJI_CHARS = (
+    '\U0001F300-\U0001F5FF'   # Symbols & Pictographs
+    '\U0001F600-\U0001F64F'   # Emoticons
+    '\U0001F680-\U0001F6FF'   # Transport
+    '\U0001F900-\U0001F9FF'   # Supplemental Symbols
+    '\U0001FA00-\U0001FAFF'   # Symbols Extended
+    '\U0001F100-\U0001F1FF'   # Enclosed Chars
+    '\U00002600-\U000026FF'   # Misc Symbols
+    '\U00002700-\U000027BF'   # Dingbats
+)
+# 注意：U+2000-U+206F (General Punctuation) **不要包含**
+# 注意：U+2300-U+23FF (Misc Technical)      **不要包含**
+# 注意：U+25A0-U+25FF (Geometric Shapes)    **不要包含**
+```
+
+**双保险**：emoji CSS 字体栈末尾加 PingFang 兜底，即使误判也不会出豆腐框。
+
+## A.5 info-card 文本对齐陷阱
+
+`info-card` 是杂志最常用的容器。如果继承全局 `text-align: justify`，多行内容里的全角空格会被 justify 拉伸成大空白，特别是"① 嘴里　米饭..."、"② 胃里　..."这种"序号 + 标题 + 全角空格 + 正文"的场景下，③④⑤ 会有夸张的首字缩进。
+
+**修复**：`.info-card p { text-align: left; }`
+
+## A.6 内容严谨性原则（科普类必看）⚠️
+
+杂志模式经常承载医学、健康、法律、金融等科普类内容。**错误信息影响很坏**。
+
+### 强制流程
+
+1. **数值标准必须按权威指南**
+   - 医学：以最新版国内指南为准（如《中国 2 型糖尿病防治指南 2020》）
+   - 不要混用国际标准（如 WHO 腰围 vs 中国指南腰围）
+   - 不确定就标注"具体由医生 / 专业人士判断"
+
+2. **同一数值在不同处出现，必须一致**
+   - 案例：腰围标准在"风险清单"和"自评题"出现，必须用同一个数字（中国指南：男 ≥90cm，女 ≥85cm）
+   - 一旦不一致，立即修复——这是诱导用户错误判断的硬伤
+
+3. **生成完所有内容后，必须做一次内部 review**
+   - 主动告诉用户："我自己审查了一遍，发现 X 处不严谨，已修正为 Y"
+   - 不要等用户发现
+
+4. **每节涉及医学决策的地方加免责声明**
+   - "具体诊断须由医生确认"
+   - "请遵主治医生指导"
+   - "不构成医疗建议"
+
+5. **辟谣类章节必须有正面证据**
+   - 不要只说"这是谣言"
+   - 要解释"为什么是谣言" + "正确做法是什么"
+
+## A.7 用户措辞稳定性原则
+
+杂志类项目用户对措辞会反复推敲。一旦用户定下某段文字（"读前须知"、"封面看点"、"卷首语"），**绝对不要在后续修改其他部分时偷偷动它**。
+
+**血泪教训**：用户定了"这是一本家庭科普杂志，帮助家人。"，我在下一版里"优化"成"这是一本小小的家庭科普手册"，被用户严厉指出。
+
+**规范**：
+- 重大文案变更必须提示用户确认
+- 同样的话不要"再润色一次"
+- 用户的原话尽量原样保留，不要"觉得太短/太朴素"就加修饰
+
+## A.8 杂志模式执行流程 Checklist
+
+```
+□ 阶段一：形态判断
+    · 用户要求是课程还是杂志？(A.1 决策表)
+    · 如果是杂志：单文件 PDF / A5 / 大字号 / 不要练习题
+□ 阶段二：需求确认
+    · 杂志名 / 期号 / 作者 / 出品方
+    · 专栏(栏目)数量、每个专栏的核心内容点
+    · 工具页(急救卡 / 打卡 / 参考资料 / 寄语 / 封底)
+□ 阶段三：技术环境
+    · weasyprint 已装
+    · Chrome 已装（/Applications/Google Chrome.app）
+    · pdftoppm(poppler) + qlmanage 可用
+□ 阶段四：拷贝 magazine_design.py，**不修改**
+□ 阶段五：写 gen_magazine.py，组装所有专栏内容
+    · 每个专栏：column_cover() + 数个 col_page_open(...) + col_page_close()
+    · 末尾思考题用 thinking_box()
+□ 阶段六：weasyprint 渲染 HTML → Chrome headless → PDF
+    · subprocess.run(timeout=300) 起步
+□ 阶段七：⚠️ 用 qlmanage 验证(不是 pdftoppm！)
+    · 抽样 3-5 页(封面、读前须知、专栏内页、表格页、急救页)
+    · 确认 macOS CoreGraphics 渲染无乱码
+□ 阶段八：内部内容 review
+    · 数值与权威指南一致
+    · 同一指标多处一致
+    · 主动告知用户审查结果和修正点
+□ 阶段九：交付 PDF + HTML 双份
+    · PDF：~/Downloads/{杂志名}.pdf
+    · HTML：~/Downloads/{杂志名}.html(兜底，浏览器可看)
+□ 阶段十：用户验收，回填目录页码(如果用户在意精确度)
+```
+
+## A.9 已知未解决问题
+
+- **Chrome headless 启动慢**：50+ 页 A5 单次渲染需要 30-60 秒。subprocess 超时设到 300 秒
+- **目录页码估算**：内容生成前无法精确知道每节多少页。当前做法是估算 → 生成 → 用 `pdfinfo` 检查实际位置 → 改目录数字 → 再生成一次。如果用户接受目录页码"大致对"，可以省第二次生成
